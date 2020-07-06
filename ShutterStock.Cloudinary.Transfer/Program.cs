@@ -20,35 +20,26 @@ namespace ShutterStock.Cloudinary.Transfer
             {
                 var serviceProvider = Initialize();
 
-                var configSection = Configuration.GetSection("ShutterStock");
-
-                var baseUrl = configSection["BaseUrl"];
-                var bearer = configSection["Bearer"];
-
-                Console.WriteLine(baseUrl);
-
-                Console.WriteLine(bearer);
-
-                var client = serviceProvider.GetService<IShutterStockApiClient>();
+                Log.Information($"---- Start verificatie ----");
 
                 var folderPath = Configuration.GetSection("ServerPath").Value;
-                Log.Information($"De ROOT van de directory is {folderPath}.");
+                Log.Information($"De ROOT van de directory is '{folderPath}'.");
 
+                var client = serviceProvider.GetService<IShutterStockApiClient>();
+                Log.Information("ShutterStock gegevens worden opgehaald...");
                 var user = client.GetUser();
-                Log.Information(user.Username);
+                Log.Information($"Gebruiker: {user.Username}");
 
                 var subscriptions = client.GetSubscriptions();
-                Log.Information(subscriptions.Data.FirstOrDefault()?.Id);
+                Log.Information($"Subscriptions: {subscriptions.Data.FirstOrDefault()?.Id}");
+
+                Log.Information($"---- Stop verificatie ----");
 
                 var startDir = new DirectoryInfo(folderPath);
 
                 var recurseFileStructure = serviceProvider.GetService<IRecurseFileStructure>();
 
                 recurseFileStructure.TraverseDirectory(startDir, client);
-
-                Console.WriteLine("Press ANY key to exit");
-                Console.ReadKey();
-
             }
             catch (Exception ex)
             {
@@ -74,13 +65,12 @@ namespace ShutterStock.Cloudinary.Transfer
                     .CreateLogger();
 
                 // Create service collection
-                Log.Information("Creating service collection");
                 var serviceCollection = new ServiceCollection();
                 ConfigureServices(serviceCollection);
 
                 // Create service provider
-                Log.Information("Building service provider");
                 IServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
+
                 return serviceProvider;
             }
             catch (Exception e)
