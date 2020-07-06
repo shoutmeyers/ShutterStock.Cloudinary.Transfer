@@ -1,19 +1,28 @@
 ﻿using ShutterStock.ApiClient;
 using System;
 using System.IO;
+using System.Linq;
+using Microsoft.Extensions.Logging;
 using ShutterStock.Cloudinary.Transfer.Util;
 
 namespace ShutterStock.Cloudinary.Transfer
 {
-    public class RecurseFileStructure
+    public class RecurseFileStructure : IRecurseFileStructure
     {
+        private readonly ILogger<RecurseFileStructure> _logger;
+
+        public RecurseFileStructure(ILogger<RecurseFileStructure> logger)
+        {
+            _logger = logger;
+        }
+
         public void TraverseDirectory(DirectoryInfo directoryInfo, IShutterStockApiClient client)
         {
             var subdirectories = directoryInfo.EnumerateDirectories();
 
             foreach (var subdirectory in subdirectories)
             {
-                Console.WriteLine($"FOLDER: {subdirectory.Name}.");
+                _logger.LogInformation($"FOLDER: {subdirectory.Name}.");
                 TraverseDirectory(subdirectory, client);
             }
 
@@ -27,24 +36,27 @@ namespace ShutterStock.Cloudinary.Transfer
 
         void HandleFile(FileInfo file, IShutterStockApiClient client)
         {
-            Console.WriteLine(file.DirectoryName);
-            Console.WriteLine($"FILE: { file.Name}.");
+            _logger.LogInformation(file.DirectoryName);
+            _logger.LogInformation($"FILE: { file.Name}.");
 
             // extract id from filename
             var imageId = RegexUtil.ParseId(file.Name);
 
             if (!imageId.HasValue) return;
 
-            Console.WriteLine(imageId.Value);
+            _logger.LogInformation($"Image idenfifier: {imageId.Value}");
 
             try
             {
                 var metaData = client.GetImage(imageId.Value);
+                _logger.LogInformation(metaData.Description);
+
                 var license = client.GetLicense(imageId.Value);
+                _logger.LogInformation(license.Data.FirstOrDefault()?.ImageId);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                _logger.LogError(e.Message);
                 throw;
             }
         }

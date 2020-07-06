@@ -1,26 +1,30 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace Cloudinary.ApiClient
 {
     public class CloudinaryApiClient : ICloudinaryApiClient
     {
-        private static readonly Account Account = new Account(
-            "dqno4ddfi",
-            "167628971918818",
-            "4p-RR2J08E_abR6DkoDbWYlgA10"); // move this to config file
+        private static Account _account;
 
-        private readonly CloudinaryDotNet.Cloudinary _cloudinary = new CloudinaryDotNet.Cloudinary(Account);
+        private readonly CloudinaryDotNet.Cloudinary _cloudinary = new CloudinaryDotNet.Cloudinary(_account);
 
         private readonly ILogger<CloudinaryApiClient> _logger;
 
-        public CloudinaryApiClient(ILogger<CloudinaryApiClient> logger)
+        public CloudinaryApiClient(ILogger<CloudinaryApiClient> logger, IConfigurationRoot config)
         {
             _logger = logger;
+            var configuration = config;
+            _account = new Account(
+                configuration.GetSection("Cloudinary")["Cloud"],
+                configuration.GetSection("Cloudinary")["ApiKey"],
+                configuration.GetSection("Cloudinary")["ApiSecret"]);
+
         }
 
         public async Task<object> CreateImage(byte[] byteArray, string filename, string path)

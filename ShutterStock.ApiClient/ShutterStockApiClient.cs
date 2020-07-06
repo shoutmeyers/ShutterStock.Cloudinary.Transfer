@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RestSharp;
@@ -9,23 +10,19 @@ namespace ShutterStock.ApiClient
 {
     public class ShutterStockApiClient : IShutterStockApiClient
     {
-        private string Bearer { get; } =
-            "v2/eXRRcmxYcWl5RDcyMjlHendGbHpJUkFMVlJFZVdRZlYvMjcxMzk5MTc4L2N1c3RvbWVyLzMvVDI0Qi12bDExaTZQVWhRY1pjTjlvS1ZvRWZyZWFtM216UUM2SjRUMktYMXdKbVZ4X0JQbl9LSnpVelROSTU5ZTNBcDFTQW5iWXF0YVRURUlCdGJLVGNtYUpYMXkzU3N4Q1NqZjkzQ3VWVF91bzBvTmwzLXJBT2EtMUxtREFGNVpBUWRJX1V0YjJpci0wbU9JbUZSdk9IOUMzN1JpdUpITGlpMVdYZW1HUk5mM0x1ZG1zTE8tazcyUmN3TnFmVGY0RTVWU1lhdWo3TGFFcE42MV9LS3l2dw";
-
-        private string BaseUrl { get; } = "https://api-sandbox.shutterstock.com/v2";
-
-        private string SubscriptionId { get; } = "";
+        private readonly IConfigurationRoot _config;
 
         private readonly ILogger<ShutterStockApiClient> _logger;
 
-        public ShutterStockApiClient(ILogger<ShutterStockApiClient> logger)
+        public ShutterStockApiClient(ILogger<ShutterStockApiClient> logger, IConfigurationRoot config)
         {
             _logger = logger;
+            _config = config;
         }
 
         public IRestResponse Authenticate()
         {
-            var client = new RestClient(BaseUrl);
+            var client = new RestClient(_config.GetSection("ShutterStock")["BaseUrl"]);
 
             var request = new RestRequest { Method = Method.POST };
 
@@ -43,12 +40,12 @@ namespace ShutterStock.ApiClient
 
         public ShutterStockUser GetUser()
         {
-            var client = new RestClient($"{BaseUrl}/user");
+            var client = new RestClient($"{_config.GetSection("ShutterStock")["BaseUrl"]}/user");
 
             var request = new RestRequest(Method.GET) { RequestFormat = DataFormat.Json };
 
             request.AddHeader("Content-Type", "application/json");
-            request.AddParameter("Authorization", "Bearer " + Bearer, ParameterType.HttpHeader);
+            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
@@ -63,12 +60,12 @@ namespace ShutterStock.ApiClient
 
         public ShutterStockSubscription GetSubscriptions()
         {
-            var client = new RestClient($"{BaseUrl}/user/subscriptions");
+            var client = new RestClient($"{_config.GetSection("ShutterStock")["BaseUrl"]}/user/subscriptions");
 
             var request = new RestRequest(Method.GET) { RequestFormat = DataFormat.Json };
 
             request.AddHeader("Content-Type", "application/json");
-            request.AddParameter("Authorization", "Bearer " + Bearer, ParameterType.HttpHeader);
+            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
@@ -83,7 +80,7 @@ namespace ShutterStock.ApiClient
 
         public ShutterStockLicenseResponse GetLicense(int id)
         {
-            var client = new RestClient($"{BaseUrl}/images/licenses");
+            var client = new RestClient($"{_config.GetSection("ShutterStock")["BaseUrl"]}/images/licenses");
 
             var request = new RestRequest(Method.POST);
             request.AddHeader("Content-Type", "application/json");
@@ -111,8 +108,8 @@ namespace ShutterStock.ApiClient
             };
 
             request.AddParameter("application/json", JsonConvert.SerializeObject(apiInput), ParameterType.RequestBody);
-            request.AddParameter("subscription_id", SubscriptionId);
-            request.AddParameter("Authorization", "Bearer " + Bearer, ParameterType.HttpHeader);
+            request.AddParameter("subscription_id", _config.GetSection("ShutterStock")["SubscriptionId"]);
+            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
@@ -127,12 +124,12 @@ namespace ShutterStock.ApiClient
 
         public ShutterStockResponse GetImage(int id)
         {
-            var client = new RestClient($"{BaseUrl}/images/{id}");
+            var client = new RestClient($"{_config.GetSection("ShutterStock")["BaseUrl"]}/images/{id}");
 
             var request = new RestRequest(Method.GET) { RequestFormat = DataFormat.Json };
 
             request.AddHeader("Content-Type", "application/json");
-            request.AddParameter("Authorization", "Bearer " + Bearer, ParameterType.HttpHeader);
+            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
