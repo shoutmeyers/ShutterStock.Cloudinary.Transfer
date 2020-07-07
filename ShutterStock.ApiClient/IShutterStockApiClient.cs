@@ -10,7 +10,7 @@
 
         ShutterStockSubscription GetSubscriptions();
 
-        ShutterStockLicenseResponse GetLicense(int id);
+        ShutterStockLicenseResponse GetLicense(int id, string subscriptionId);
 
         ShutterStockResponse GetImage(int id);
     }

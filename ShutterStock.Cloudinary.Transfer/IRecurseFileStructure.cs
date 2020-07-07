@@ -5,6 +5,6 @@ namespace ShutterStock.Cloudinary.Transfer
 {
     public interface IRecurseFileStructure
     {
-        void TraverseDirectory(DirectoryInfo directoryInfo, IShutterStockApiClient client);
+        void TraverseDirectory(DirectoryInfo directoryInfo, string subscriptionId, IShutterStockApiClient client);
     }
 }

@@ -26,7 +26,7 @@ namespace ShutterStock.ApiClient
         public void Authorize()
         {
             var url =
-                $"https://accounts.shutterstock.com/login?next=%2Foauth%2Fauthorize%3Fclient_id%3DytQrlXqiyD7229GzwFlzIRALVREeWQfV%26realm%3Dcustomer%26redirect_uri%3Dhttp%3A%2F%2Flocalhost%3A3000%26response_type%3Dcode%26scope%3Duser.view%20user.edit%20collections.view%20collections.edit%20licenses.view%20licenses.create%20earnings.view%20media.upload%20media.submit%20media.edit%20purchases.view%20reseller.view%20reseller.purchase%26state%3Dpoc";
+                $"https://accounts.shutterstock.com/login?next=%2Foauth%2Fauthorize%3Fclient_id%3D{_config.GetSection("ShutterStock")["ConsumerKey"]}%26realm%3Dcustomer%26redirect_uri%3Dhttp%3A%2F%2Flocalhost%3A3000%26response_type%3Dcode%26scope%3Duser.view%20user.edit%20collections.view%20collections.edit%20licenses.view%20licenses.create%20earnings.view%20media.upload%20media.submit%20media.edit%20purchases.view%20reseller.view%20reseller.purchase%26state%3Dpoc";
 
             OpenUrl(url);
         }
@@ -97,7 +97,7 @@ namespace ShutterStock.ApiClient
             throw new Exception(response.Content);
         }
 
-        public ShutterStockLicenseResponse GetLicense(int id)
+        public ShutterStockLicenseResponse GetLicense(int id, string subscriptionId)
         {
             var client = new RestClient($"{_config.GetSection("ShutterStock")["BaseUrl"]}/images/licenses");
 
@@ -127,7 +127,7 @@ namespace ShutterStock.ApiClient
             };
 
             request.AddParameter("application/json", JsonConvert.SerializeObject(apiInput), ParameterType.RequestBody);
-            request.AddParameter("subscription_id", _config.GetSection("ShutterStock")["SubscriptionId"]);
+            request.AddParameter("subscription_id", subscriptionId);
             request.AddParameter("Authorization", "Bearer " + _bearer, ParameterType.HttpHeader);
 
             var response = client.Execute(request);
@@ -161,7 +161,7 @@ namespace ShutterStock.ApiClient
             throw new Exception(response.Content);
         }
 
-        private void OpenUrl(string url)
+        private static void OpenUrl(string url)
         {
             try
             {

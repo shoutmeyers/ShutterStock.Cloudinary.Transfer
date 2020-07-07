@@ -25,10 +25,9 @@ namespace ShutterStock.Cloudinary.Transfer
             {
                 var serviceProvider = Initialize();
 
-                Log.Information($"---- Start verificatie ----");
-
-                var folderPath = Configuration.GetSection("ServerPath").Value;
-                Log.Information($"De ROOT van de directory is '{folderPath}'.");
+                Log.Information($"Start ShutterStock Transfer applicatie...");
+                Log.Information($" ");
+                Log.Information($"---- Start ShutterStock verificatie ----");
 
                 CreateServer();
 
@@ -44,19 +43,52 @@ namespace ShutterStock.Cloudinary.Transfer
                 }
 
                 client.Authenticate(_shutterStockCode);
+
                 var user = client.GetUser();
+
                 Log.Information($"Gebruiker: {user.Username}");
+                Log.Information($"ID: {user.Id}");
+                Log.Information($"Naam: {user.LastName} - Voornaam: {user.FirstName}");
 
                 var subscriptions = client.GetSubscriptions();
-                Log.Information($"Subscriptions: {subscriptions.Data.FirstOrDefault()?.Id}");
 
-                Log.Information($"---- Stop verificatie ----");
+                foreach (var subscription in subscriptions.Data)
+                {
+                    Log.Information($"Subscription ID: {subscription.Id}");
+                    Log.Information($"Omschrijving: {subscription.Description}");
+                    Log.Information($"Vervaldatum: {subscription.ExpirationTime:D}");
+                    Log.Information($"Licensie: {subscription.License}");
 
+                    foreach (var subscriptionFormat in subscription.Formats)
+                    {
+                        Log.Information($"Beschikbaar formaat:");
+                        Log.Information($"Omschrijving: {subscriptionFormat.Description}");
+                        Log.Information($"Formaat: {subscriptionFormat.Format}");
+                        Log.Information($"Afmeting: {subscriptionFormat.Size}");
+                        Log.Information($"Media type: {subscriptionFormat.MediaType}");
+                        Log.Information($"Minimum resolutie: {subscriptionFormat.MinResolution}");
+                    }
+                }
+
+                var validSubscription = subscriptions.Data.FirstOrDefault(x => x.ExpirationTime > DateTime.Now)?.Id;
+
+                if (!subscriptions.Data.Any() || string.IsNullOrEmpty(validSubscription))
+                {
+                    Log.Information($"Geen geldige subscriptions gevonden.");
+                    Log.Information($"Verder zonder subscription (enkel metadata wordt opgehaald).");
+                    validSubscription = string.Empty;
+                }
+
+                Log.Information($"---- Stop ShutterStock verificatie ----");
+                Log.Information($" ");
+
+                var folderPath = Configuration.GetSection("ServerPath").Value;
+                Log.Information($"De root van de directory is '{folderPath}'.");
                 var startDir = new DirectoryInfo(folderPath);
 
                 var recurseFileStructure = serviceProvider.GetService<IRecurseFileStructure>();
 
-                recurseFileStructure.TraverseDirectory(startDir, client);
+                recurseFileStructure.TraverseDirectory(startDir, validSubscription, client);
             }
             catch (Exception ex)
             {
@@ -134,11 +166,12 @@ namespace ShutterStock.Cloudinary.Transfer
         private static void CreateServer()
         {
             var tcp = new TcpListener(IPAddress.Any, 3000);
+            var running = true;
             tcp.Start();
 
             var listeningThread = new Thread(() =>
             {
-                while (true)
+                while (running)
                 {
                     var tcpClient = tcp.AcceptTcpClient();
                     ThreadPool.QueueUserWorkItem(param =>
@@ -153,14 +186,15 @@ namespace ShutterStock.Cloudinary.Transfer
                         if (!string.IsNullOrEmpty(code))
                         {
                             _shutterStockCode = code.Substring(code.LastIndexOf('=') + 1);
+                            running = false;
                         }
 
                         tcpClient.Close();
                     }, null);
                 }
-            });
 
-            listeningThread.IsBackground = true;
+            }) {IsBackground = true};
+
             listeningThread.Start();
         }
     }
