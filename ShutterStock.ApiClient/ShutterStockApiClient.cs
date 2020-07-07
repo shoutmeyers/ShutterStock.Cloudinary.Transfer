@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RestSharp;
-using RestSharp.Authenticators;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace ShutterStock.ApiClient
 {
@@ -14,28 +15,46 @@ namespace ShutterStock.ApiClient
 
         private readonly ILogger<ShutterStockApiClient> _logger;
 
+        private string _bearer;
+
         public ShutterStockApiClient(ILogger<ShutterStockApiClient> logger, IConfigurationRoot config)
         {
             _logger = logger;
             _config = config;
         }
 
-        public IRestResponse Authenticate()
+        public void Authorize()
         {
-            var client = new RestClient(_config.GetSection("ShutterStock")["BaseUrl"]);
+            var url =
+                $"https://accounts.shutterstock.com/login?next=%2Foauth%2Fauthorize%3Fclient_id%3DytQrlXqiyD7229GzwFlzIRALVREeWQfV%26realm%3Dcustomer%26redirect_uri%3Dhttp%3A%2F%2Flocalhost%3A3000%26response_type%3Dcode%26scope%3Duser.view%20user.edit%20collections.view%20collections.edit%20licenses.view%20licenses.create%20earnings.view%20media.upload%20media.submit%20media.edit%20purchases.view%20reseller.view%20reseller.purchase%26state%3Dpoc";
+
+            OpenUrl(url);
+        }
+
+        public void Authenticate(string shutterStockCode)
+        {
+            var client = new RestClient($"{_config.GetSection("ShutterStock")["BaseUrl"]}/oauth/access_token");
 
             var request = new RestRequest { Method = Method.POST };
 
             request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
-            request.AddHeader("Accept", "application/json");
 
-            request.AddParameter("grant_type", "client_credentials");
+            var body = $"client_id={_config.GetSection("ShutterStock")["ConsumerKey"]}&client_secret={_config.GetSection("ShutterStock")["ConsumerSecret"]}&code={shutterStockCode}&grant_type=authorization_code&realm=customer&expires=false";
 
-            client.Authenticator = new HttpBasicAuthenticator("client-app", "secret");
+            request.AddParameter("application/x-www-form-urlencoded", body, ParameterType.RequestBody);
 
             var response = client.Execute(request);
 
-            return response;
+            if (response.IsSuccessful)
+            {
+                var token = JsonConvert.DeserializeObject<ShutterStockToken>(response.Content);
+                _bearer = token.AccessToken;
+            }
+            else
+            {
+                _logger.LogError(response.Content);
+                throw new Exception(response.Content);
+            }
         }
 
         public ShutterStockUser GetUser()
@@ -45,7 +64,7 @@ namespace ShutterStock.ApiClient
             var request = new RestRequest(Method.GET) { RequestFormat = DataFormat.Json };
 
             request.AddHeader("Content-Type", "application/json");
-            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
+            request.AddParameter("Authorization", "Bearer " + _bearer, ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
@@ -65,7 +84,7 @@ namespace ShutterStock.ApiClient
             var request = new RestRequest(Method.GET) { RequestFormat = DataFormat.Json };
 
             request.AddHeader("Content-Type", "application/json");
-            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
+            request.AddParameter("Authorization", "Bearer " + _bearer, ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
@@ -97,7 +116,7 @@ namespace ShutterStock.ApiClient
                         Price = 0,
                         Metadata = new Metadata
                         {
-                            CustomerId = "12345", 
+                            CustomerId = "12345",
                             GeoLocation = "",
                             NumberViewed = "",
                             SearchTerm = ""
@@ -109,7 +128,7 @@ namespace ShutterStock.ApiClient
 
             request.AddParameter("application/json", JsonConvert.SerializeObject(apiInput), ParameterType.RequestBody);
             request.AddParameter("subscription_id", _config.GetSection("ShutterStock")["SubscriptionId"]);
-            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
+            request.AddParameter("Authorization", "Bearer " + _bearer, ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
@@ -129,7 +148,7 @@ namespace ShutterStock.ApiClient
             var request = new RestRequest(Method.GET) { RequestFormat = DataFormat.Json };
 
             request.AddHeader("Content-Type", "application/json");
-            request.AddParameter("Authorization", "Bearer " + _config.GetSection("ShutterStock")["Bearer"], ParameterType.HttpHeader);
+            request.AddParameter("Authorization", "Bearer " + _bearer, ParameterType.HttpHeader);
 
             var response = client.Execute(request);
 
@@ -140,6 +159,35 @@ namespace ShutterStock.ApiClient
 
             _logger.LogError(response.Content);
             throw new Exception(response.Content);
+        }
+
+        private void OpenUrl(string url)
+        {
+            try
+            {
+                Process.Start(url);
+            }
+            catch
+            {
+                // hack because of this: https://github.com/dotnet/corefx/issues/10361
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    url = url.Replace("&", "^&");
+                    Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    Process.Start("xdg-open", url);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    Process.Start("open", url);
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
     }
 }

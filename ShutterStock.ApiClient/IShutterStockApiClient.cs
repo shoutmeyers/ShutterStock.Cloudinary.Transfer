@@ -1,10 +1,10 @@
-﻿using RestSharp;
-
-namespace ShutterStock.ApiClient
+﻿namespace ShutterStock.ApiClient
 {
     public interface IShutterStockApiClient
     {
-        IRestResponse Authenticate();
+        void Authorize();
+
+        void Authenticate(string shutterStockCode);
 
         ShutterStockUser GetUser();
 
